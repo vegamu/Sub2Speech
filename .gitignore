@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+config/settings.json
+config/voices_cache.json
+Audio/
+temp/
+dist/
+build/
+*.spec

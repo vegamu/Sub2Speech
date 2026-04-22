@@ -1,0 +1,4 @@
+PySide6>=6.7
+edge-tts>=7.0
+ffmpeg-python>=0.2
+imageio-ffmpeg>=0.5
