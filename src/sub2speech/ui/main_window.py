@@ -524,10 +524,14 @@ class MainWindow(QMainWindow):
             "xử lý retry segment lỗi và lưu cấu hình ổn định theo phiên làm việc.</p>"
             "<ul>"
             f"<li>Phiên bản: <b>{__version__}</b></li>"
+            "<li>Tác giả: <b>vega</b></li>"
             "<li>Công nghệ: PySide6, edge-tts, ffmpeg</li>"
+            "<li>Giấy phép: <b>GNU GPL v3</b> "
+            "(<a href='https://www.gnu.org/licenses/gpl-3.0.html'>Chi tiết</a>)</li>"
             f"<li>Tệp cấu hình: {self.config.settings_path}</li>"
             f"<li>Thư mục xuất mặc định: {self.settings.output_dir}</li>"
             "</ul>"
+            "<p>Phần mềm tự do phát hành theo GNU GPL v3. Xem thêm trong file LICENSE đi kèm.</p>"
         )
         layout.addWidget(text)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok)

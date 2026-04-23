@@ -1,68 +1,79 @@
 # Sub2Speech
 
-Sub2Speech la ung dung desktop dung PySide6 de chuyen file phu de SRT hoac file van ban TXT thanh audio MP3 192 kbps bang `edge-tts`.
+Sub2Speech là ứng dụng sử dụng`edge-tts` để chuyển phụ đề/văn bản thành giọng nói. Đồng thời giữ đúng timeline theo phụ đề.
 
-## Version
+## Phiên bản
 
 - `0.0.1`
 
-## Tinh nang chinh
+## Tính năng chính
 
-- Ho tro SRT/TXT.
-- SRT: giu timeline theo subtitle (speed-up/pad silence theo tung dong).
-- TXT: tu dong chia doan (toi da 500 tu/doan), tao audio lan luot, ghep thanh file cuoi.
-- Quan ly nhieu nguoi noi, gan voice theo danh sach doan.
-- Nghe thu trong app (player tich hop), khong can mo app ngoai.
-- Chon thu muc output va nho lai cho lan sau.
-- Tuy chon luu file audio goc theo tung dong subtitle.
-- Co che bo qua segment loi, cho phep tao lai segment loi.
-- Giao dien hien dai 3 vung: Top bar, Workspace 2 cot, Bottom action bar.
+- Hỗ trợ cả hai định dạng đầu vào: SRT và TXT.
+- **Luồng SRT:** giữ timeline theo từng dòng phụ đề.
+- **Luồng TXT:**
+- Quản lý nhiều người nói, cho phép gán voice theo danh sách đoạn.
+- Tùy chọn lưu audio gốc theo từng dòng phụ đề.
 
-## Bo cuc giao dien moi
+## Bố cục giao diện
 
-- Top bar: nut `Chon file phu de/van ban`, `Tro giup`, `Thong tin` va trang thai file.
-- Workspace: trai la bang `Noi dung`, phai la panel `Chon giong doc`.
-- Bottom action bar:
-  - Hang 1: thu muc xuat + preview + xuat MP3 + tuy chon luu audio goc.
-  - Hang 2: player tich hop (Play/Pause, Stop, slider).
+- **Top bar:** `Chọn file phụ đề/văn bản`, `Trợ giúp`, `Thông tin`, cùng trạng thái file hiện tại.
+- **Workspace:** bên trái là bảng `Nội dung`, bên phải là panel `Chọn giọng đọc`.
+- **Bottom action bar:**
+  - Hàng 1: thư mục xuất, nghe thử, xuất MP3, và tùy chọn lưu audio gốc.
+  - Hàng 2: trình phát tích hợp (`Play/Pause`, `Stop`, thanh trượt).
 
-## Quick Start
+## Yêu cầu hệ thống
 
-### 1) Cai dat
+- Windows có thể chạy Python 3.10+.
+- Kết nối mạng ổn định khi tổng hợp giọng nói bằng `edge-tts`.
+- Có sẵn `ffmpeg` trong môi trường hoặc đi kèm theo cấu hình dự án (dùng để xử lý/ghép audio).
+
+## Khởi động nhanh
+
+### 1) Cài đặt
 
 ```bat
 setup.bat
 ```
 
-### 2) Chay ung dung
+### 2) Chạy ứng dụng
 
 ```bat
 run.bat
 ```
 
-## Quy trinh su dung
+## Quy trình sử dụng
 
-### Luong SRT (nhieu speaker)
+### Luồng SRT (nhiều speaker)
 
-1. Mo file `.srt`.
-2. Gan voice cho speaker/nhom doan.
-3. Preview de nghe thu.
-4. Bam `Xuat MP3`.
-5. Neu co segment loi, bam `Xuat MP3` de tao lai segment loi cho den khi hoan tat.
+1. Mở file `.srt`.
+2. Gán voice cho từng speaker hoặc nhóm đoạn.
+3. Dùng chức năng nghe thử để kiểm tra.
+4. Nhấn `Xuất MP3`.
+5. Nếu có segment lỗi, tiếp tục nhấn `Xuất MP3` để render lại segment lỗi cho đến khi hoàn tất.
 
-### Luong TXT (1 voice toan bo)
+### Luồng TXT (một voice cho toàn bộ)
 
-1. Mo file `.txt`.
-2. App chuyen sang che do TXT, chi can chon voice + rate/volume/pitch.
-3. Preview de nghe thu.
-4. Bam `Xuat MP3`.
+1. Mở file `.txt`.
+2. Ứng dụng tự chuyển sang chế độ TXT, bạn chọn voice + `rate`/`volume`/`pitch`.
+3. Nghe thử để kiểm tra.
+4. Nhấn `Xuất MP3`.
 
-## Xu ly loi thuong gap
+## Xử lý lỗi thường gặp
 
-- `Thiếu voice`: chua gan giọng cho tat ca segment.
-- `No audio was received`: loi mang/edge-tts tam thoi, thu xuat lai.
-- `ffmpeg error`: xem log CMD chi tiet (app da in stderr cu the).
+- `Thiếu voice`: chưa gán giọng cho tất cả segment bắt buộc.
+- `No audio was received`: lỗi mạng hoặc dịch vụ `edge-tts` tạm thời, hãy thử xuất lại.
+- `ffmpeg error`: kiểm tra log terminal để xem stderr chi tiết.
 
-## Tai lieu bo sung
+## Tài liệu bổ sung
 
-- Xem them file `USER_GUIDE.md` de co huong dan day du.
+- Xem `USER_GUIDE.md` để có hướng dẫn chi tiết cho từng thao tác.
+
+## Tác giả
+
+- `vega`
+
+## Giấy phép
+
+- Dự án phát hành theo giấy phép mã nguồn mở `GNU General Public License v3.0 (GPL-3.0)`.
+- Xem đầy đủ trong file `LICENSE` tại thư mục gốc hoặc tại [GNU GPL v3](https://www.gnu.org/licenses/gpl-3.0.html).
