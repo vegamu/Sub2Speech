@@ -4,7 +4,7 @@ Sub2Speech là ứng dụng sử dụng`edge-tts` để chuyển phụ đề/vă
 
 ## Phiên bản
 
-- `0.0.1`
+- `0.1.0`
 
 ## Tính năng chính
 
@@ -16,11 +16,14 @@ Sub2Speech là ứng dụng sử dụng`edge-tts` để chuyển phụ đề/vă
 
 ## Bố cục giao diện
 
-- **Top bar:** `Chọn file phụ đề/văn bản`, `Trợ giúp`, `Thông tin`, cùng trạng thái file hiện tại.
-- **Workspace:** bên trái là bảng `Nội dung`, bên phải là panel `Chọn giọng đọc`.
-- **Bottom action bar:**
-  - Hàng 1: thư mục xuất, nghe thử, xuất MP3, và tùy chọn lưu audio gốc.
-  - Hàng 2: trình phát tích hợp (`Play/Pause`, `Stop`, thanh trượt).
+- **Top bar (1 hàng):** `Mở file...`, dòng trạng thái gộp (tệp/chế độ/số đoạn), và nút `Trợ giúp`.
+- **Workspace:**
+  - Bên trái: bảng `Nội dung` kèm nút `Nghe thử dòng đã chọn` ngay phía trên bảng.
+  - Bên phải: panel `Chọn giọng đọc` với 2 phần chính `Thiết lập giọng` và `Danh sách người nói`.
+- **Bottom bar hợp nhất:**
+  - Hàng 1: `Thư mục xuất`, `Chọn...`, tùy chọn `Lưu âm thanh gốc`, và `Xuất MP3`.
+  - Hàng 2: trình phát tích hợp (`Phát/Tạm dừng`, `Dừng`, thanh trượt, thời gian `mm:ss / mm:ss`, trạng thái file).
+  - Hàng 3: thanh tiến trình (chỉ hiện khi đang xuất).
 
 ## Yêu cầu hệ thống
 

@@ -1,4 +1,4 @@
-# HƯỚNG DẪN SỬ DỤNG - Sub2Speech v0.0.1
+# HƯỚNG DẪN SỬ DỤNG - Sub2Speech v0.1.0
 
 ## 1. Giới thiệu
 
@@ -20,17 +20,19 @@ Sub2Speech là ứng dụng chuyển phụ đề/văn bản thành giọng nói 
 ## 3.1 Bố cục giao diện
 
 - **Top bar:**
-  - `Chọn file phụ đề/văn bản`
+  - `Mở file...`
   - `Trợ giúp`
-  - `Thông tin`
-  - Dòng trạng thái file, mode, số segment
+  - Dòng trạng thái gộp: tên tệp, chế độ xử lý, số segment
 - **Workspace:**
-  - Trái: bảng `Nội dung`
-  - Phải: panel `Chọn giọng đọc` (thiết lập Voice + ánh xạ Speaker)
+  - Trái: bảng `Nội dung` và nút `Nghe thử dòng đã chọn` ngay trên bảng
+  - Phải: panel `Chọn giọng đọc` gồm:
+    - `Thiết lập giọng`
+    - `Danh sách người nói`
+  - Có thể double-click trực tiếp vào một dòng trong bảng `Nội dung` để nghe thử nhanh
 - **Bottom:**
-  - `Thư mục xuất`, `Chọn thư mục`, `Nghe thử dòng phụ đề`, `Xuất MP3`
-  - Tùy chọn `Lưu audio gốc theo từng dòng phụ đề`
-  - Player tích hợp ở hàng dưới
+  - Hàng xuất: `Thư mục xuất`, `Chọn...`, `Lưu audio gốc theo từng dòng phụ đề`, `Xuất MP3`
+  - Hàng player: `Phát/Tạm dừng`, `Dừng`, thanh trượt, thời gian phát, trạng thái file
+  - Hàng tiến trình: chỉ hiện khi đang export
 
 ## 4. Hướng dẫn với file SRT
 
@@ -57,6 +59,7 @@ Sub2Speech là ứng dụng chuyển phụ đề/văn bản thành giọng nói 
 
 - Cả audio preview và audio đã xuất đều phát trực tiếp trong ứng dụng.
 - Hỗ trợ thanh trượt thời gian, `Play/Pause`, `Stop`.
+- Hiển thị thời lượng theo định dạng `mm:ss / mm:ss`.
 
 ## 8. Các tham số giọng đọc
 
@@ -66,8 +69,10 @@ Sub2Speech là ứng dụng chuyển phụ đề/văn bản thành giọng nói 
 
 ## 9. Trợ giúp và thông tin trong ứng dụng
 
-- Nút `Trợ giúp`: mở hướng dẫn nhanh trong app.
-- Nút `Thông tin`: hiển thị phiên bản và thông tin hệ thống ứng dụng.
+- Nút `Trợ giúp` mở cửa sổ tích hợp:
+  - Hướng dẫn thao tác nhanh
+  - Mẹo chỉnh tham số giọng đọc
+  - Thông tin phiên bản, công nghệ và cấu hình ứng dụng
 
 ## 10. Mẹo sử dụng hiệu quả
 

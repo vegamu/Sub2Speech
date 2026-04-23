@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
-    QProgressBar,
     QPushButton,
     QSlider,
     QSplitter,
@@ -32,6 +31,7 @@ from sub2speech.ui.output_panel import OutputPanel
 from sub2speech.ui.speaker_manager import SpeakerManager
 from sub2speech.ui.subtitle_table import SubtitleTable
 from sub2speech.ui.theme import build_stylesheet
+from sub2speech.ui.animated_progress import AnimatedProgressBar
 from sub2speech.utils.logging_utils import log_error, log_info
 from sub2speech.workers.preview_worker import PreviewWorker
 from sub2speech.workers.tts_worker import TtsWorker
@@ -64,9 +64,8 @@ class MainWindow(QMainWindow):
         self.output_panel.output_edit.setText(self.settings.output_dir)
         self.output_panel.save_original_checkbox.setChecked(self.settings.save_original_audio)
         self.output_panel.export_button.clicked.connect(self.export_audio)
-        self.output_panel.preview_button.clicked.connect(self.preview_selected)
 
-        self.progress = QProgressBar()
+        self.progress = AnimatedProgressBar()
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
         self.progress.setVisible(False)
@@ -77,19 +76,20 @@ class MainWindow(QMainWindow):
         self.audio_output.setVolume(0.9)
         self._active_preview_file: str | None = None
 
-        self.header_status = QLabel("Chưa chọn file phụ đề/văn bản.")
+        self.header_status = QLabel("Chưa chọn file. Bấm 'Mở file...' để bắt đầu.")
         self.header_status.setObjectName("subtleText")
-        self.mode_hint = QLabel("")
-        self.mode_hint.setObjectName("subtleText")
-        self.open_file_button = QPushButton("Chọn file phụ đề/văn bản")
+        self.open_file_button = QPushButton("Mở file...")
         self.open_file_button.clicked.connect(self.open_file)
-        self.open_file_button.setFixedWidth(200)
+        self.open_file_button.setMinimumWidth(120)
         self.open_file_button.setObjectName("primaryButton")
         self.help_button = QPushButton("Trợ giúp")
         self.help_button.clicked.connect(self.show_usage_guide)
-        self.help_button.setFixedWidth(110)
+        self.help_button.setMinimumWidth(100)
 
         self.player_status = QLabel("Trình phát: Chưa phát")
+        self.player_time_label = QLabel("00:00 / 00:00")
+        self.player_time_label.setObjectName("subtleText")
+        self.player_duration_ms = 0
         self.player_slider = QSlider(Qt.Horizontal)
         self.player_slider.setRange(0, 0)
         self.play_button = QPushButton("Phát")
@@ -97,6 +97,9 @@ class MainWindow(QMainWindow):
         self.play_button.clicked.connect(self._toggle_play_pause)
         self.stop_button.clicked.connect(self.media_player.stop)
         self.player_slider.sliderMoved.connect(self._seek_position)
+        self.subtitle_preview_button = QPushButton("Nghe thử dòng đã chọn")
+        self.subtitle_preview_button.clicked.connect(self.preview_selected)
+        self.subtitle_table.cellDoubleClicked.connect(self._preview_by_row)
         self.media_player.positionChanged.connect(self._on_position_changed)
         self.media_player.durationChanged.connect(self._on_duration_changed)
         self.media_player.playbackStateChanged.connect(self._on_playback_state_changed)
@@ -105,14 +108,20 @@ class MainWindow(QMainWindow):
         subtitles_panel = QFrame()
         subtitles_panel.setObjectName("contentCard")
         subtitles_layout = QVBoxLayout(subtitles_panel)
-        subtitles_layout.setContentsMargins(8, 8, 8, 8)
-        subtitles_layout.addWidget(self._build_section_title("Nội dung"))
+        subtitles_layout.setContentsMargins(12, 10, 12, 10)
+        subtitles_toolbar = QHBoxLayout()
+        subtitles_toolbar.setContentsMargins(0, 0, 0, 0)
+        subtitles_toolbar.setSpacing(8)
+        subtitles_toolbar.addWidget(self._build_section_title("Nội dung"))
+        subtitles_toolbar.addStretch(1)
+        subtitles_toolbar.addWidget(self.subtitle_preview_button)
+        subtitles_layout.addLayout(subtitles_toolbar)
         subtitles_layout.addWidget(self.subtitle_table)
 
         speaker_panel = QFrame()
         speaker_panel.setObjectName("configCard")
         speaker_layout = QVBoxLayout(speaker_panel)
-        speaker_layout.setContentsMargins(8, 8, 8, 8)
+        speaker_layout.setContentsMargins(12, 10, 12, 10)
         speaker_layout.addWidget(self._build_section_title("Chọn giọng đọc"))
         speaker_layout.addWidget(self.speaker_manager)
 
@@ -121,52 +130,47 @@ class MainWindow(QMainWindow):
         top_split.addWidget(speaker_panel)
         top_split.setStretchFactor(0, 2)
         top_split.setStretchFactor(1, 1)
-        top_split.setSizes([820, 420])
+        top_split.setHandleWidth(6)
+        top_split.setCollapsible(0, False)
+        top_split.setCollapsible(1, False)
+        top_split.setSizes([int(self.width() * 0.62), int(self.width() * 0.38)])
 
         root = QWidget()
         root_layout = QVBoxLayout(root)
-        root_layout.setContentsMargins(8, 8, 8, 8)
-        root_layout.setSpacing(8)
+        root_layout.setContentsMargins(10, 10, 10, 10)
+        root_layout.setSpacing(10)
         top_bar_card = QFrame()
         top_bar_card.setObjectName("topBarCard")
-        top_bar_layout = QVBoxLayout(top_bar_card)
-        top_bar_layout.setContentsMargins(10, 8, 10, 8)
-        top_bar_layout.setSpacing(4)
-        top_actions = QHBoxLayout()
-        top_actions.addWidget(self.open_file_button)
-        top_actions.addStretch(1)
-        top_actions.addWidget(self.help_button)
-        top_bar_layout.addLayout(top_actions)
-        top_bar_layout.addWidget(self.header_status)
-        top_bar_layout.addWidget(self.mode_hint)
+        top_bar_layout = QHBoxLayout(top_bar_card)
+        top_bar_layout.setContentsMargins(12, 10, 12, 10)
+        top_bar_layout.setSpacing(8)
+        top_bar_layout.addWidget(self.open_file_button)
+        top_bar_layout.addWidget(self.header_status, 1)
+        top_bar_layout.addWidget(self.help_button)
         root_layout.addWidget(top_bar_card)
 
         content_card = QFrame()
         content_card.setObjectName("contentCard")
         content_layout = QVBoxLayout(content_card)
-        content_layout.setContentsMargins(8, 8, 8, 8)
+        content_layout.setContentsMargins(12, 10, 12, 10)
         content_layout.addWidget(top_split, 1)
         root_layout.addWidget(content_card, 1)
 
-        action_card = QFrame()
-        action_card.setObjectName("actionCard")
-        action_layout = QVBoxLayout(action_card)
-        action_layout.setContentsMargins(8, 6, 8, 6)
-        action_layout.addWidget(self.output_panel)
-        root_layout.addWidget(action_card)
-
-        player_card = QFrame()
-        player_card.setObjectName("playerCard")
-        player_layout = QVBoxLayout(player_card)
-        player_layout.setContentsMargins(8, 6, 8, 6)
+        bottom_card = QFrame()
+        bottom_card.setObjectName("actionCard")
+        bottom_layout = QVBoxLayout(bottom_card)
+        bottom_layout.setContentsMargins(12, 10, 12, 10)
+        bottom_layout.setSpacing(8)
+        bottom_layout.addWidget(self.output_panel)
         player_row = QHBoxLayout()
-        player_row.addWidget(self.player_status)
-        player_row.addWidget(self.player_slider, 1)
         player_row.addWidget(self.play_button)
         player_row.addWidget(self.stop_button)
-        player_layout.addLayout(player_row)
-        root_layout.addWidget(player_card)
-        root_layout.addWidget(self.progress)
+        player_row.addWidget(self.player_slider, 1)
+        player_row.addWidget(self.player_time_label)
+        player_row.addWidget(self.player_status)
+        bottom_layout.addLayout(player_row)
+        bottom_layout.addWidget(self.progress)
+        root_layout.addWidget(bottom_card)
         self.setCentralWidget(root)
         self._apply_tooltips()
         self._update_ui_state()
@@ -203,10 +207,8 @@ class MainWindow(QMainWindow):
         if is_txt:
             # TXT mode: không cần tạo người nói/đoạn thủ công.
             self.speaker_manager.apply_txt_voice_settings()
-            self.mode_hint.setText("Chế độ TXT: chỉ chọn giọng và tham số, hệ thống áp dụng toàn bộ nội dung.")
         else:
             self._seed_auto_speakers()
-            self.mode_hint.setText("Chế độ SRT: gán giọng theo người nói hoặc theo nhóm đoạn.")
         self.refresh_table()
         self._update_header_status()
         self._update_ui_state()
@@ -291,6 +293,10 @@ class MainWindow(QMainWindow):
         self.preview_worker.error.connect(self._on_preview_error)
         self.preview_worker.start()
 
+    def _preview_by_row(self, row: int, _column: int) -> None:
+        self.subtitle_table.selectRow(row)
+        self.preview_selected()
+
     def preview_custom_voice(self, text: str, voice: str, rate: str, volume: str, pitch: str) -> None:
         self.preview_worker = PreviewWorker(
             self.config,
@@ -360,6 +366,7 @@ class MainWindow(QMainWindow):
 
     def _on_export_done(self, path: str) -> None:
         self.progress.setValue(100)
+        self.progress.setVisible(False)
         self.pending_failed_segments = []
         log_info(f"Export done path={path}")
         QMessageBox.information(self, "Hoàn tất", f"Đã xuất audio: {path}")
@@ -376,7 +383,7 @@ class MainWindow(QMainWindow):
             "Tạo audio chưa hoàn tất",
             "Các segment sau bị lỗi và đã được bỏ qua:\n"
             f"{', '.join(str(i) for i in failed_list)}\n\n"
-            "Hãy chỉnh lại voice/tham số nếu cần, sau đó bấm 'Xuất MP3' để tạo lại segment lỗi. "
+            "Hãy chỉnh lại voice/tham số nếu cần, sau đó bấm 'Xuất lại MP3' để tạo lại segment lỗi. "
             "Khi không còn lỗi hệ thống sẽ tự render file cuối.",
         )
         self._update_ui_state()
@@ -436,9 +443,12 @@ class MainWindow(QMainWindow):
         self.player_slider.blockSignals(True)
         self.player_slider.setValue(position)
         self.player_slider.blockSignals(False)
+        self._update_player_time_label(position)
 
     def _on_duration_changed(self, duration: int) -> None:
+        self.player_duration_ms = max(duration, 0)
         self.player_slider.setRange(0, max(duration, 0))
+        self._update_player_time_label(self.media_player.position())
 
     def _on_playback_state_changed(self, state) -> None:
         if state == QMediaPlayer.PlayingState:
@@ -474,26 +484,38 @@ class MainWindow(QMainWindow):
 
     def _apply_tooltips(self) -> None:
         self.output_panel.export_button.setToolTip("Xuất file âm thanh MP3 192 kbps.")
-        self.output_panel.preview_button.setToolTip("Nghe thử dòng phụ đề đang chọn.")
+        self.subtitle_preview_button.setToolTip("Nghe thử dòng phụ đề đang chọn.")
         self.speaker_manager.rate_input.setToolTip("Tốc độ đọc. Ví dụ: +10% hoặc -15%.")
         self.speaker_manager.volume_input.setToolTip("Âm lượng đọc. Ví dụ: +0% hoặc -10%.")
         self.speaker_manager.pitch_input.setToolTip("Cao độ giọng. Ví dụ: +0Hz hoặc +20Hz.")
 
     def _update_header_status(self) -> None:
         if not self.input_path:
-            self.header_status.setText("Chưa chọn file phụ đề/văn bản.")
+            self.header_status.setText("Chưa chọn file. Bấm 'Mở file...' để bắt đầu.")
             return
         file_name = Path(self.input_path).name
         self.header_status.setText(
-            f"Tệp: {file_name} | Chế độ: {self.current_input_mode} | Đoạn: {len(self.segments)}"
+            f"Tệp: {file_name}  •  {self._current_mode_text()}  •  Đoạn: {len(self.segments)}"
         )
 
     def _update_ui_state(self) -> None:
         has_segments = bool(self.segments)
         has_mapping = all(bool(self._build_segment_voice_map().get(seg.index, "")) for seg in self.segments) if has_segments else False
-        self.output_panel.preview_button.setEnabled(has_segments)
+        self.subtitle_preview_button.setEnabled(has_segments)
         self.output_panel.export_button.setEnabled(has_segments and has_mapping)
+        self._refresh_export_button_label()
         self._update_header_status()
+
+    def _refresh_export_button_label(self) -> None:
+        if self.pending_failed_segments:
+            self.output_panel.export_button.setText("Xuất lại MP3")
+            self.output_panel.export_button.setToolTip(
+                "Tạo lại các segment bị lỗi ở lần xuất trước. "
+                "Khi không còn lỗi, hệ thống sẽ tự render file MP3 hoàn chỉnh."
+            )
+        else:
+            self.output_panel.export_button.setText("Xuất MP3")
+            self.output_panel.export_button.setToolTip("Xuất file âm thanh MP3 192 kbps.")
 
     def show_usage_guide(self) -> None:
         dialog = QDialog(self)
@@ -505,7 +527,7 @@ class MainWindow(QMainWindow):
         text.setHtml(
             "<h3>Hướng dẫn nhanh</h3>"
             "<ol>"
-            "<li>Bấm <b>Chọn file phụ đề/văn bản</b> để nạp dữ liệu.</li>"
+            "<li>Bấm <b>Mở file...</b> để nạp dữ liệu.</li>"
             "<li>Nếu là <b>SRT</b>: gán giọng theo người nói/đoạn.</li>"
             "<li>Nếu là <b>TXT</b>: chỉ cần chọn 1 giọng và tham số đọc.</li>"
             "<li>Dùng <b>Preview</b> để nghe thử trước khi xuất.</li>"
@@ -543,3 +565,20 @@ class MainWindow(QMainWindow):
         label = QLabel(text)
         label.setObjectName("sectionTitle")
         return label
+
+    def _current_mode_text(self) -> str:
+        if self.current_input_mode == "TXT":
+            return "Chế độ TXT: áp dụng một cấu hình giọng cho toàn bộ nội dung"
+        if self.current_input_mode == "SRT":
+            return "Chế độ SRT: gán giọng theo người nói hoặc nhóm đoạn"
+        return "Chế độ chưa xác định"
+
+    def _update_player_time_label(self, position_ms: int) -> None:
+        self.player_time_label.setText(
+            f"{self._format_time(position_ms)} / {self._format_time(self.player_duration_ms)}"
+        )
+
+    def _format_time(self, milliseconds: int) -> str:
+        total_seconds = max(milliseconds, 0) // 1000
+        minutes, seconds = divmod(total_seconds, 60)
+        return f"{minutes:02d}:{seconds:02d}"

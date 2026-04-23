@@ -1,12 +1,20 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication
+from sub2speech.utils.subprocess_utils import ensure_no_cmd_window
 
-from sub2speech.config import AppConfig
-from sub2speech.ui.main_window import MainWindow
-from sub2speech.utils.logging_utils import log_info
+# Patch subprocess NGAY khi import module này, trước khi bất kỳ thư viện
+# nào dưới đây (ffmpeg-python, imageio-ffmpeg, edge-tts, ...) kịp spawn
+# tiến trình con. Nếu đặt muộn hơn, cửa sổ cmd vẫn có thể nhấp nháy trong
+# những lần gọi đầu tiên của bản .exe windowed.
+ensure_no_cmd_window()
+
+from PySide6.QtGui import QIcon  # noqa: E402
+from PySide6.QtWidgets import QApplication  # noqa: E402
+
+from sub2speech.config import AppConfig  # noqa: E402
+from sub2speech.ui.main_window import MainWindow  # noqa: E402
+from sub2speech.utils.logging_utils import log_info  # noqa: E402
 
 
 def _resolve_paths() -> tuple[Path, Path]:
