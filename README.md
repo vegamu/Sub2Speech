@@ -1,6 +1,7 @@
 # Sub2Speech
 
 Sub2Speech là ứng dụng sử dụng`edge-tts` để chuyển phụ đề/văn bản thành giọng nói. Đồng thời giữ đúng timeline theo phụ đề.
+![Photo](https://github.com/vegamu/Sub2Speech/blob/main/src/screen.png?raw=true)
 
 ## Phiên bản
 
