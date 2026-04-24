@@ -1,6 +1,6 @@
 ﻿English content is below.
 
-# HƯỚNG DẪN SỬ DỤNG - Sub2Speech v0.2.0
+# HƯỚNG DẪN SỬ DỤNG - Sub2Speech v1.0
 
 ## 1. Giới thiệu
 
@@ -86,7 +86,7 @@ Sub2Speech là ứng dụng chuyển phụ đề/văn bản thành giọng nói 
 
 ---
 
-# USER GUIDE - Sub2Speech v0.2.0
+# USER GUIDE - Sub2Speech v1.0
 
 ## 1. Introduction
 
