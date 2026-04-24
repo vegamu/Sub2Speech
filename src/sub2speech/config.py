@@ -8,6 +8,7 @@ class Settings:
     output_dir: str
     save_original_audio: bool
     last_language_group: str
+    language: str
 
 
 class AppConfig:
@@ -27,6 +28,7 @@ class AppConfig:
             output_dir=str(self.audio_root.resolve()),
             save_original_audio=False,
             last_language_group="Tiếng Việt",
+            language="vi",
         )
         if not self.settings_path.exists():
             return default
@@ -36,6 +38,7 @@ class AppConfig:
                 output_dir=raw.get("output_dir", default.output_dir),
                 save_original_audio=bool(raw.get("save_original_audio", default.save_original_audio)),
                 last_language_group=raw.get("last_language_group", default.last_language_group),
+                language=raw.get("language", default.language),
             )
         except (OSError, json.JSONDecodeError):
             return default
@@ -45,5 +48,6 @@ class AppConfig:
             "output_dir": settings.output_dir,
             "save_original_audio": settings.save_original_audio,
             "last_language_group": settings.last_language_group,
+            "language": settings.language,
         }
         self.settings_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

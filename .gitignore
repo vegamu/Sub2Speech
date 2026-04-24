@@ -4,6 +4,7 @@ __pycache__/
 *.pyo
 *.pyd
 *.log
+logs/
 config/settings.json
 config/voices_cache.json
 Audio/

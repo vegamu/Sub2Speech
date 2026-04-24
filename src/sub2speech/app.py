@@ -14,7 +14,8 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from sub2speech.config import AppConfig  # noqa: E402
 from sub2speech.ui.main_window import MainWindow  # noqa: E402
-from sub2speech.utils.logging_utils import log_info  # noqa: E402
+from sub2speech.utils.i18n import translator  # noqa: E402
+from sub2speech.utils.logging_utils import init_logging, log_info  # noqa: E402
 
 
 def _resolve_paths() -> tuple[Path, Path]:
@@ -36,6 +37,11 @@ def _resolve_paths() -> tuple[Path, Path]:
 
 def main() -> int:
     app_root, resource_root = _resolve_paths()
+    logs_dir = init_logging(app_root)
+    log_info(f"Sub2Speech started, logs dir={logs_dir}")
+    config = AppConfig(app_root)
+    settings = config.load_settings()
+    translator.set_language(settings.language)
     app = QApplication(sys.argv)
 
     icon_path = resource_root / "ico.png"
@@ -52,7 +58,6 @@ def main() -> int:
                 pass
         log_info(f"Loaded application icon path={icon_path}")
 
-    config = AppConfig(app_root)
     window = MainWindow(config)
     if icon_path.exists():
         window.setWindowIcon(QIcon(str(icon_path)))

@@ -1,18 +1,20 @@
 from PySide6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem
 
 from sub2speech.models.subtitle import Segment
+from sub2speech.utils.i18n import tr, translator
 
 
 class SubtitleTable(QTableWidget):
     def __init__(self) -> None:
         super().__init__(0, 5)
-        self.setHorizontalHeaderLabels(["#", "Thời gian", "Nội dung", "Người nói", "Giọng"])
+        self.retranslate_headers()
         self.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
         self.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
         self.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
         self.verticalHeader().setVisible(False)
+        translator.language_changed.connect(self.retranslate_headers)
 
     def set_segments(
         self,
@@ -31,3 +33,14 @@ class SubtitleTable(QTableWidget):
             speaker_name = seg.speaker or speaker_map.get(seg.index, "")
             self.setItem(row, 3, QTableWidgetItem(speaker_name))
             self.setItem(row, 4, QTableWidgetItem(voice_map.get(seg.index, "")))
+
+    def retranslate_headers(self) -> None:
+        self.setHorizontalHeaderLabels(
+            [
+                tr("table.idx"),
+                tr("table.time"),
+                tr("table.content"),
+                tr("table.speaker"),
+                tr("table.voice"),
+            ]
+        )

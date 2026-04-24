@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from sub2speech.core.speaker_assignment import check_overlap, parse_segment_ranges
 from sub2speech.models.speaker import Speaker
+from sub2speech.utils.i18n import tr, translator
 from sub2speech.utils.logging_utils import log_info
 
 
@@ -40,22 +41,22 @@ class SpeakerManager(QWidget):
         self.volume_input = QLineEdit("+0%")
         self.pitch_input = QLineEdit("+0Hz")
         self.mode_hint = QLabel("")
-        self.name_label = QLabel("Tên người nói")
-        self.range_label = QLabel("Danh sách đoạn")
-        self.language_label = QLabel("Ngôn ngữ")
-        self.voice_label = QLabel("Giọng đọc")
-        self.rate_label = QLabel("Tốc độ")
-        self.volume_label = QLabel("Âm lượng")
-        self.pitch_label = QLabel("Cao độ")
-        self.voice_options_label = QLabel("Tùy chỉnh giọng")
+        self.name_label = QLabel()
+        self.range_label = QLabel()
+        self.language_label = QLabel()
+        self.voice_label = QLabel()
+        self.rate_label = QLabel()
+        self.volume_label = QLabel()
+        self.pitch_label = QLabel()
+        self.voice_options_label = QLabel()
         self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(["Người nói", "Các đoạn", "Ngôn ngữ", "Giọng"])
+        self.table.setHorizontalHeaderLabels([tr("table.speaker"), tr("speaker.range_label"), tr("speaker.language_label"), tr("table.voice")])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.itemSelectionChanged.connect(self._load_selected_to_form)
 
-        self.add_btn = QPushButton("Thêm/Cập nhật vào Danh sách người nói")
-        self.remove_btn = QPushButton("Xóa")
-        self.preview_btn = QPushButton("Nghe thử giọng")
+        self.add_btn = QPushButton()
+        self.remove_btn = QPushButton()
+        self.preview_btn = QPushButton()
         self.add_btn.setObjectName("primaryButton")
         self.add_btn.clicked.connect(self.upsert_speaker)
         self.remove_btn.clicked.connect(self.delete_selected)
@@ -66,9 +67,9 @@ class SpeakerManager(QWidget):
         self.volume_input.editingFinished.connect(self._on_voice_params_changed)
         self.pitch_input.editingFinished.connect(self._on_voice_params_changed)
 
-        self.voice_section_title = QLabel("Thiết lập giọng")
+        self.voice_section_title = QLabel()
         self.voice_section_title.setObjectName("sectionTitle")
-        self.mapping_section_title = QLabel("Danh sách người nói")
+        self.mapping_section_title = QLabel()
         self.mapping_section_title.setObjectName("sectionTitle")
         self.separator = QFrame()
         self.separator.setFrameShape(QFrame.HLine)
@@ -125,24 +126,33 @@ class SpeakerManager(QWidget):
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.voice_options_widget.setMaximumHeight(34)
         self.mode_hint.setWordWrap(True)
+        translator.language_changed.connect(self.retranslate_ui)
+        self.retranslate_ui()
 
     def set_max_index(self, max_index: int) -> None:
         self.max_index = max_index
 
     def set_voice_groups(self, grouped: dict, preferred_group: str = "") -> None:
         self.voice_groups = grouped
-        self.language_combo.clear()
-        self.voice_combo.clear()
-        for group in grouped:
-            self.language_combo.addItem(group)
-        if preferred_group:
-            idx = self.language_combo.findText(preferred_group)
-            if idx >= 0:
-                self.language_combo.setCurrentIndex(idx)
+        self._rebuild_language_combo(preferred_group)
         self._populate_voices()
 
+    def _rebuild_language_combo(self, preferred_group: str = "") -> None:
+        current_key = str(self.language_combo.currentData() or "")
+        self.language_combo.clear()
+        for group in self.voice_groups:
+            self.language_combo.addItem(self._translate_language_group(group), group)
+
+        target_key = preferred_group or current_key
+        if target_key:
+            idx = self.language_combo.findData(target_key)
+            if idx >= 0:
+                self.language_combo.setCurrentIndex(idx)
+        elif self.language_combo.count() > 0:
+            self.language_combo.setCurrentIndex(0)
+
     def current_language_group(self) -> str:
-        return self.language_combo.currentText()
+        return str(self.language_combo.currentData() or self.language_combo.currentText())
 
     def set_txt_mode(self, enabled: bool) -> None:
         self.txt_mode = enabled
@@ -155,7 +165,7 @@ class SpeakerManager(QWidget):
         self.table.setVisible(not enabled)
         self.txt_spacer.setVisible(enabled)
         self.mode_hint.setText(
-            "Chế độ TXT: chỉ cần chọn giọng và tham số, áp dụng cho toàn bộ đoạn."
+            tr("speaker.txt_mode_hint")
             if enabled
             else ""
         )
@@ -184,10 +194,10 @@ class SpeakerManager(QWidget):
     def preview_voice(self) -> None:
         voice = self.voice_combo.currentData()
         if not voice:
-            QMessageBox.warning(self, "Cảnh báo", "Chưa chọn giọng đọc để nghe thử")
+            QMessageBox.warning(self, tr("speaker.warn_title"), tr("speaker.warn_no_voice"))
             return
         self.preview_voice_requested.emit(
-            "Xin chào, đây là giọng đọc mẫu.",
+            tr("speaker.preview_sample_text"),
             str(voice),
             self._normalize_rate(self.rate_input.text()),
             self._normalize_volume(self.volume_input.text()),
@@ -201,12 +211,12 @@ class SpeakerManager(QWidget):
         name = self.name_input.text().strip()
         ranges = self.range_input.text().strip()
         if not name:
-            QMessageBox.warning(self, "Cảnh báo", "Tên người nói không được để trống")
+            QMessageBox.warning(self, tr("speaker.warn_title"), tr("speaker.warn_empty_name"))
             return
         try:
             segments = parse_segment_ranges(ranges, self.max_index)
         except ValueError as exc:
-            QMessageBox.warning(self, "Cảnh báo", str(exc))
+            QMessageBox.warning(self, tr("speaker.warn_title"), str(exc))
             return
 
         speaker = self.speakers.get(name, Speaker(name=name))
@@ -217,7 +227,7 @@ class SpeakerManager(QWidget):
         speaker.volume = self._normalize_volume(self.volume_input.text())
         speaker.pitch = self._normalize_pitch(self.pitch_input.text())
         if not speaker.voice:
-            QMessageBox.warning(self, "Cảnh báo", "Chưa chọn giọng đọc")
+            QMessageBox.warning(self, tr("speaker.warn_title"), tr("speaker.warn_no_voice"))
             return
         self.speakers[name] = speaker
         log_info(
@@ -241,8 +251,8 @@ class SpeakerManager(QWidget):
         if overlaps:
             QMessageBox.warning(
                 self,
-                "Cảnh báo trùng đoạn",
-                f"Đoạn bị gán nhiều người nói: {', '.join(str(i) for i in sorted(overlaps))}",
+                tr("speaker.overlap_title"),
+                tr("speaker.overlap_msg", items=", ".join(str(i) for i in sorted(overlaps))),
             )
 
         self.table.setRowCount(0)
@@ -251,12 +261,12 @@ class SpeakerManager(QWidget):
             self.table.insertRow(row)
             self.table.setItem(row, 0, QTableWidgetItem(speaker.name))
             self.table.setItem(row, 1, QTableWidgetItem(_compress_ranges(speaker.segments)))
-            self.table.setItem(row, 2, QTableWidgetItem(speaker.language_group))
+            self.table.setItem(row, 2, QTableWidgetItem(self._translate_language_group(speaker.language_group)))
             self.table.setItem(row, 3, QTableWidgetItem(speaker.voice))
         self.speakers_changed.emit()
 
     def _populate_voices(self) -> None:
-        language = self.language_combo.currentText()
+        language = str(self.language_combo.currentData() or self.language_combo.currentText())
         current_voice = self.voice_combo.currentData()
         self.voice_combo.clear()
         for voice in self.voice_groups.get(language, []):
@@ -279,7 +289,7 @@ class SpeakerManager(QWidget):
         self.name_input.setText(speaker.name)
         self.range_input.setText(_compress_ranges(speaker.segments))
         if speaker.language_group:
-            lang_idx = self.language_combo.findText(speaker.language_group)
+            lang_idx = self.language_combo.findData(speaker.language_group)
             if lang_idx >= 0:
                 self.language_combo.setCurrentIndex(lang_idx)
         if speaker.voice:
@@ -322,6 +332,30 @@ class SpeakerManager(QWidget):
             f"TXT mode apply voice={speaker.voice} segments={len(speaker.segments)} rate={speaker.rate} volume={speaker.volume} pitch={speaker.pitch}"
         )
         self.speakers_changed.emit()
+
+    def retranslate_ui(self) -> None:
+        self.name_label.setText(tr("speaker.name_label"))
+        self.range_label.setText(tr("speaker.range_label"))
+        self.language_label.setText(tr("speaker.language_label"))
+        self.voice_label.setText(tr("speaker.voice_label"))
+        self.rate_label.setText(tr("speaker.rate_label"))
+        self.volume_label.setText(tr("speaker.volume_label"))
+        self.pitch_label.setText(tr("speaker.pitch_label"))
+        self.voice_options_label.setText(tr("speaker.voice_options_label"))
+        self.add_btn.setText(tr("speaker.add_btn"))
+        self.remove_btn.setText(tr("speaker.remove_btn"))
+        self.preview_btn.setText(tr("speaker.preview_btn"))
+        self.voice_section_title.setText(tr("section.voice_setup"))
+        self.mapping_section_title.setText(tr("section.speaker_list"))
+        self.table.setHorizontalHeaderLabels([tr("table.speaker"), tr("speaker.range_label"), tr("speaker.language_label"), tr("table.voice")])
+        self.mode_hint.setText(tr("speaker.txt_mode_hint") if self.txt_mode else "")
+        self._rebuild_language_combo()
+        self.refresh()
+
+    def _translate_language_group(self, raw_group: str) -> str:
+        key = f"language.group.{raw_group}"
+        translated = tr(key)
+        return translated if translated != key else raw_group
 
 
 def _compress_ranges(values: set[int]) -> str:

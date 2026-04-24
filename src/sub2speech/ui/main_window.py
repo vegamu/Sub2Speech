@@ -32,6 +32,7 @@ from sub2speech.ui.speaker_manager import SpeakerManager
 from sub2speech.ui.subtitle_table import SubtitleTable
 from sub2speech.ui.theme import build_stylesheet
 from sub2speech.ui.animated_progress import AnimatedProgressBar
+from sub2speech.utils.i18n import LANG_EN, LANG_VI, tr, translator
 from sub2speech.utils.logging_utils import log_error, log_info
 from sub2speech.workers.preview_worker import PreviewWorker
 from sub2speech.workers.tts_worker import TtsWorker
@@ -76,28 +77,31 @@ class MainWindow(QMainWindow):
         self.audio_output.setVolume(0.9)
         self._active_preview_file: str | None = None
 
-        self.header_status = QLabel("Chưa chọn file. Bấm 'Mở file...' để bắt đầu.")
+        self.header_status = QLabel(tr("status.no_file"))
         self.header_status.setObjectName("subtleText")
-        self.open_file_button = QPushButton("Mở file...")
+        self.open_file_button = QPushButton(tr("top.open_file"))
         self.open_file_button.clicked.connect(self.open_file)
         self.open_file_button.setMinimumWidth(120)
         self.open_file_button.setObjectName("primaryButton")
-        self.help_button = QPushButton("Trợ giúp")
+        self.language_button = QPushButton()
+        self.language_button.setMinimumWidth(70)
+        self.language_button.clicked.connect(self._toggle_language)
+        self.help_button = QPushButton(tr("top.help"))
         self.help_button.clicked.connect(self.show_usage_guide)
         self.help_button.setMinimumWidth(100)
 
-        self.player_status = QLabel("Trình phát: Chưa phát")
+        self.player_status = QLabel(tr("player.status_idle"))
         self.player_time_label = QLabel("00:00 / 00:00")
         self.player_time_label.setObjectName("subtleText")
         self.player_duration_ms = 0
         self.player_slider = QSlider(Qt.Horizontal)
         self.player_slider.setRange(0, 0)
-        self.play_button = QPushButton("Phát")
-        self.stop_button = QPushButton("Dừng")
+        self.play_button = QPushButton(tr("player.play"))
+        self.stop_button = QPushButton(tr("player.stop"))
         self.play_button.clicked.connect(self._toggle_play_pause)
         self.stop_button.clicked.connect(self.media_player.stop)
         self.player_slider.sliderMoved.connect(self._seek_position)
-        self.subtitle_preview_button = QPushButton("Nghe thử dòng đã chọn")
+        self.subtitle_preview_button = QPushButton(tr("subtitle.preview_btn"))
         self.subtitle_preview_button.clicked.connect(self.preview_selected)
         self.subtitle_table.cellDoubleClicked.connect(self._preview_by_row)
         self.media_player.positionChanged.connect(self._on_position_changed)
@@ -112,7 +116,8 @@ class MainWindow(QMainWindow):
         subtitles_toolbar = QHBoxLayout()
         subtitles_toolbar.setContentsMargins(0, 0, 0, 0)
         subtitles_toolbar.setSpacing(8)
-        subtitles_toolbar.addWidget(self._build_section_title("Nội dung"))
+        self.content_section_title = self._build_section_title(tr("section.content"))
+        subtitles_toolbar.addWidget(self.content_section_title)
         subtitles_toolbar.addStretch(1)
         subtitles_toolbar.addWidget(self.subtitle_preview_button)
         subtitles_layout.addLayout(subtitles_toolbar)
@@ -122,7 +127,8 @@ class MainWindow(QMainWindow):
         speaker_panel.setObjectName("configCard")
         speaker_layout = QVBoxLayout(speaker_panel)
         speaker_layout.setContentsMargins(12, 10, 12, 10)
-        speaker_layout.addWidget(self._build_section_title("Chọn giọng đọc"))
+        self.voice_section_title = self._build_section_title(tr("section.voice"))
+        speaker_layout.addWidget(self.voice_section_title)
         speaker_layout.addWidget(self.speaker_manager)
 
         top_split = QSplitter()
@@ -146,6 +152,7 @@ class MainWindow(QMainWindow):
         top_bar_layout.setSpacing(8)
         top_bar_layout.addWidget(self.open_file_button)
         top_bar_layout.addWidget(self.header_status, 1)
+        top_bar_layout.addWidget(self.language_button)
         top_bar_layout.addWidget(self.help_button)
         root_layout.addWidget(top_bar_card)
 
@@ -172,15 +179,17 @@ class MainWindow(QMainWindow):
         bottom_layout.addWidget(self.progress)
         root_layout.addWidget(bottom_card)
         self.setCentralWidget(root)
+        translator.language_changed.connect(self._on_language_changed)
+        self.retranslate_ui()
         self._apply_tooltips()
         self._update_ui_state()
 
     def open_file(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Chọn file phụ đề hoặc văn bản",
+            tr("dlg.open_input_title"),
             "",
-            "Subtitle/Text (*.srt *.txt)",
+            tr("dlg.open_input_filter"),
         )
         if not file_path:
             return
@@ -192,7 +201,7 @@ class MainWindow(QMainWindow):
             log_info(f"Parsed input segments={len(self.segments)}")
         except Exception as exc:
             log_error(f"Open file failed: {exc}")
-            QMessageBox.critical(self, "Lỗi", str(exc))
+            QMessageBox.critical(self, tr("dlg.error_title"), str(exc))
             return
 
         self.input_path = file_path
@@ -266,12 +275,12 @@ class MainWindow(QMainWindow):
     def preview_selected(self) -> None:
         row = self.subtitle_table.currentRow()
         if row < 0:
-            QMessageBox.warning(self, "Cảnh báo", "Hãy chọn 1 dòng phụ đề để nghe thử")
+            QMessageBox.warning(self, tr("dlg.warn_title"), tr("subtitle.warn_select_row"))
             return
         seg = self.segments[row]
         voice = self._build_segment_voice_map().get(seg.index, "")
         if not voice:
-            QMessageBox.warning(self, "Cảnh báo", "Dòng này chưa có giọng đọc")
+            QMessageBox.warning(self, tr("dlg.warn_title"), tr("subtitle.warn_no_voice"))
             return
         options = self._build_segment_voice_options_map().get(
             seg.index,
@@ -313,11 +322,11 @@ class MainWindow(QMainWindow):
 
     def export_audio(self) -> None:
         if not self.segments:
-            QMessageBox.warning(self, "Cảnh báo", "Chưa có dữ liệu đầu vào")
+            QMessageBox.warning(self, tr("dlg.warn_title"), tr("dlg.no_input"))
             return
         output_dir = self.output_panel.output_edit.text().strip() or self.settings.output_dir
         if not output_dir:
-            QMessageBox.warning(self, "Cảnh báo", "Vui lòng chọn thư mục xuất")
+            QMessageBox.warning(self, tr("dlg.warn_title"), tr("dlg.no_output_dir"))
             return
         Path(output_dir).mkdir(parents=True, exist_ok=True)
         base_name = Path(self.input_path).stem if self.input_path else "output"
@@ -328,7 +337,7 @@ class MainWindow(QMainWindow):
         missing = [seg.index for seg in self.segments if not voice_map.get(seg.index)]
         if missing:
             log_error(f"Export blocked missing_voice_segments={missing}")
-            QMessageBox.warning(self, "Thiếu voice", f"Các đoạn chưa có voice: {', '.join(map(str, missing))}")
+            QMessageBox.warning(self, tr("dlg.missing_voice_title"), tr("dlg.missing_voice_msg", items=", ".join(map(str, missing))))
             return
 
         self.settings.output_dir = output_dir
@@ -369,7 +378,7 @@ class MainWindow(QMainWindow):
         self.progress.setVisible(False)
         self.pending_failed_segments = []
         log_info(f"Export done path={path}")
-        QMessageBox.information(self, "Hoàn tất", f"Đã xuất audio: {path}")
+        QMessageBox.information(self, tr("dlg.done_title"), tr("dlg.export_done", path=path))
         self._play_audio_file(path)
         self._update_ui_state()
 
@@ -380,18 +389,15 @@ class MainWindow(QMainWindow):
         log_error(f"Export incomplete failed_segments={failed_list}")
         QMessageBox.warning(
             self,
-            "Tạo audio chưa hoàn tất",
-            "Các segment sau bị lỗi và đã được bỏ qua:\n"
-            f"{', '.join(str(i) for i in failed_list)}\n\n"
-            "Hãy chỉnh lại voice/tham số nếu cần, sau đó bấm 'Xuất lại MP3' để tạo lại segment lỗi. "
-            "Khi không còn lỗi hệ thống sẽ tự render file cuối.",
+            tr("dlg.export_incomplete_title"),
+            tr("dlg.export_incomplete_msg", items=", ".join(str(i) for i in failed_list)),
         )
         self._update_ui_state()
 
     def _on_export_error(self, message: str) -> None:
         self.progress.setVisible(False)
         log_error(f"Export error: {message}")
-        QMessageBox.critical(self, "Lỗi", message)
+        QMessageBox.critical(self, tr("dlg.error_title"), message)
         self._update_ui_state()
 
     def _resolve_retry_indices(self) -> list[int]:
@@ -412,7 +418,7 @@ class MainWindow(QMainWindow):
 
     def _on_preview_error(self, message: str) -> None:
         log_error(f"Preview error: {message}")
-        QMessageBox.critical(self, "Lỗi preview", message)
+        QMessageBox.critical(self, tr("dlg.preview_error_title"), message)
 
     def _open_audio_file(self, path: str) -> None:
         url = QUrl.fromLocalFile(str(Path(path).resolve()))
@@ -420,7 +426,7 @@ class MainWindow(QMainWindow):
 
     def _play_audio_file(self, path: str) -> None:
         resolved = str(Path(path).resolve())
-        self.player_status.setText(f"Trình phát: {Path(path).name}")
+        self.player_status.setText(tr("player.status_playing", name=Path(path).name))
         log_info(f"Play in-app file={resolved}")
         self._cleanup_active_preview_file()
         # Reset source để tránh cache media cũ khi preview liên tục.
@@ -452,9 +458,9 @@ class MainWindow(QMainWindow):
 
     def _on_playback_state_changed(self, state) -> None:
         if state == QMediaPlayer.PlayingState:
-            self.play_button.setText("Tạm dừng")
+            self.play_button.setText(tr("player.pause"))
         else:
-            self.play_button.setText("Phát")
+            self.play_button.setText(tr("player.play"))
 
     def _on_media_status_changed(self, status) -> None:
         if status == QMediaPlayer.EndOfMedia:
@@ -483,20 +489,18 @@ class MainWindow(QMainWindow):
             log_error(f"Delete preview temp file failed path={preview_path} error={exc}")
 
     def _apply_tooltips(self) -> None:
-        self.output_panel.export_button.setToolTip("Xuất file âm thanh MP3 192 kbps.")
-        self.subtitle_preview_button.setToolTip("Nghe thử dòng phụ đề đang chọn.")
-        self.speaker_manager.rate_input.setToolTip("Tốc độ đọc. Ví dụ: +10% hoặc -15%.")
-        self.speaker_manager.volume_input.setToolTip("Âm lượng đọc. Ví dụ: +0% hoặc -10%.")
-        self.speaker_manager.pitch_input.setToolTip("Cao độ giọng. Ví dụ: +0Hz hoặc +20Hz.")
+        self.output_panel.export_button.setToolTip(tr("tip.export"))
+        self.subtitle_preview_button.setToolTip(tr("tip.preview_row"))
+        self.speaker_manager.rate_input.setToolTip(tr("tip.rate"))
+        self.speaker_manager.volume_input.setToolTip(tr("tip.volume"))
+        self.speaker_manager.pitch_input.setToolTip(tr("tip.pitch"))
 
     def _update_header_status(self) -> None:
         if not self.input_path:
-            self.header_status.setText("Chưa chọn file. Bấm 'Mở file...' để bắt đầu.")
+            self.header_status.setText(tr("status.no_file"))
             return
         file_name = Path(self.input_path).name
-        self.header_status.setText(
-            f"Tệp: {file_name}  •  {self._current_mode_text()}  •  Đoạn: {len(self.segments)}"
-        )
+        self.header_status.setText(tr("status.file_info", file=file_name, mode=self._current_mode_text(), count=len(self.segments)))
 
     def _update_ui_state(self) -> None:
         has_segments = bool(self.segments)
@@ -508,52 +512,25 @@ class MainWindow(QMainWindow):
 
     def _refresh_export_button_label(self) -> None:
         if self.pending_failed_segments:
-            self.output_panel.export_button.setText("Xuất lại MP3")
-            self.output_panel.export_button.setToolTip(
-                "Tạo lại các segment bị lỗi ở lần xuất trước. "
-                "Khi không còn lỗi, hệ thống sẽ tự render file MP3 hoàn chỉnh."
-            )
+            self.output_panel.export_button.setText(tr("output.export_retry"))
+            self.output_panel.export_button.setToolTip(tr("tip.export_retry"))
         else:
-            self.output_panel.export_button.setText("Xuất MP3")
-            self.output_panel.export_button.setToolTip("Xuất file âm thanh MP3 192 kbps.")
+            self.output_panel.export_button.setText(tr("output.export"))
+            self.output_panel.export_button.setToolTip(tr("tip.export"))
 
     def show_usage_guide(self) -> None:
         dialog = QDialog(self)
-        dialog.setWindowTitle("Hướng dẫn sử dụng")
+        dialog.setWindowTitle(tr("help.dialog_title"))
         dialog.resize(760, 560)
         layout = QVBoxLayout(dialog)
         text = QTextEdit(dialog)
         text.setReadOnly(True)
         text.setHtml(
-            "<h3>Hướng dẫn nhanh</h3>"
-            "<ol>"
-            "<li>Bấm <b>Mở file...</b> để nạp dữ liệu.</li>"
-            "<li>Nếu là <b>SRT</b>: gán giọng theo người nói/đoạn.</li>"
-            "<li>Nếu là <b>TXT</b>: chỉ cần chọn 1 giọng và tham số đọc.</li>"
-            "<li>Dùng <b>Preview</b> để nghe thử trước khi xuất.</li>"
-            "<li>Chọn thư mục xuất và bấm <b>Xuất MP3</b>.</li>"
-            "<li>Nếu có segment lỗi, bấm xuất lại để tạo lại segment lỗi.</li>"
-            "</ol>"
-            "<h4>Mẹo tham số</h4>"
-            "<ul>"
-            "<li>Rate: +10% / -10%</li>"
-            "<li>Volume: +0% / -10%</li>"
-            "<li>Pitch: +0Hz / +20Hz</li>"
-            "</ul>"
-            "<h4>Thông tin ứng dụng</h4>"
-            "<p><b>Sub2Speech</b> là công cụ chuyển nội dung SRT/TXT thành âm thanh MP3 "
-            "dành cho quy trình sản xuất nội dung. Ứng dụng hỗ trợ preview trong app, "
-            "xử lý retry segment lỗi và lưu cấu hình ổn định theo phiên làm việc.</p>"
-            "<ul>"
-            f"<li>Phiên bản: <b>{__version__}</b></li>"
-            "<li>Tác giả: <b>vega</b></li>"
-            "<li>Công nghệ: PySide6, edge-tts, ffmpeg</li>"
-            "<li>Giấy phép: <b>GNU GPL v3</b> "
-            "(<a href='https://www.gnu.org/licenses/gpl-3.0.html'>Chi tiết</a>)</li>"
-            f"<li>Tệp cấu hình: {self.config.settings_path}</li>"
-            f"<li>Thư mục xuất mặc định: {self.settings.output_dir}</li>"
-            "</ul>"
-            "<p>Phần mềm tự do phát hành theo GNU GPL v3. Xem thêm trong file LICENSE đi kèm.</p>"
+            tr("help.html_body").format(
+                version=__version__,
+                settings_path=self.config.settings_path,
+                output_dir=self.settings.output_dir,
+            )
         )
         layout.addWidget(text)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok)
@@ -568,10 +545,36 @@ class MainWindow(QMainWindow):
 
     def _current_mode_text(self) -> str:
         if self.current_input_mode == "TXT":
-            return "Chế độ TXT: áp dụng một cấu hình giọng cho toàn bộ nội dung"
+            return tr("status.mode_txt")
         if self.current_input_mode == "SRT":
-            return "Chế độ SRT: gán giọng theo người nói hoặc nhóm đoạn"
-        return "Chế độ chưa xác định"
+            return tr("status.mode_srt")
+        return tr("status.mode_unknown")
+
+    def _toggle_language(self) -> None:
+        new_lang = LANG_EN if translator.language == LANG_VI else LANG_VI
+        self.settings.language = new_lang
+        self.config.save_settings(self.settings)
+        translator.set_language(new_lang)
+
+    def _on_language_changed(self, _language: str) -> None:
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        self.open_file_button.setText(tr("top.open_file"))
+        self.help_button.setText(tr("top.help"))
+        self.language_button.setText(tr("top.lang_toggle_to_en") if translator.language == LANG_VI else tr("top.lang_toggle_to_vi"))
+        self.play_button.setText(tr("player.play"))
+        self.stop_button.setText(tr("player.stop"))
+        if self.media_player.playbackState() != QMediaPlayer.PlayingState:
+            self.player_status.setText(tr("player.status_idle"))
+        self.subtitle_preview_button.setText(tr("subtitle.preview_btn"))
+        self.content_section_title.setText(tr("section.content"))
+        self.voice_section_title.setText(tr("section.voice"))
+        self.speaker_manager.retranslate_ui()
+        self.output_panel.retranslate_ui()
+        self.subtitle_table.retranslate_headers()
+        self._apply_tooltips()
+        self._update_ui_state()
 
     def _update_player_time_label(self, position_ms: int) -> None:
         self.player_time_label.setText(
