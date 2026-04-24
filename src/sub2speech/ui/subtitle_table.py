@@ -7,6 +7,7 @@ from sub2speech.utils.i18n import tr, translator
 class SubtitleTable(QTableWidget):
     def __init__(self) -> None:
         super().__init__(0, 5)
+        self._is_txt_mode = False
         self.retranslate_headers()
         self.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
@@ -15,6 +16,10 @@ class SubtitleTable(QTableWidget):
         self.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
         self.verticalHeader().setVisible(False)
         translator.language_changed.connect(self.retranslate_headers)
+
+    def set_txt_mode(self, is_txt: bool) -> None:
+        self._is_txt_mode = is_txt
+        self.setColumnHidden(1, is_txt)
 
     def set_segments(
         self,

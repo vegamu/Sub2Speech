@@ -1,3 +1,4 @@
+import asyncio
 import json
 import shutil
 from datetime import datetime
@@ -11,7 +12,7 @@ from sub2speech.core.audio_processor import (
     concatenate_audio_files_to_mp3,
     export_single_mp3,
 )
-from sub2speech.core.edge_tts_engine import synthesize_sync
+from sub2speech.core.edge_tts_engine import TtsJob, synthesize_batch
 from sub2speech.models.subtitle import Segment
 from sub2speech.utils.logging_utils import log_error, log_info
 
@@ -73,12 +74,15 @@ class TtsWorker(QThread):
             if self.save_original:
                 original_dir.mkdir(parents=True, exist_ok=True)
 
-            for idx, seg in enumerate(targets, start=1):
+            processed_count = 0
+            jobs: list[TtsJob] = []
+            for seg in targets:
                 voice = self.segment_voice_map.get(seg.index, "")
                 if not voice:
                     failed_segments.append(seg.index)
                     log_error(f"Skip synth segment={seg.index} reason=no_voice")
-                    self.progress.emit(int((idx / total) * 80))
+                    processed_count += 1
+                    self.progress.emit(int((processed_count / total) * 80))
                     continue
                 options = self.segment_option_map.get(
                     seg.index,
@@ -86,25 +90,54 @@ class TtsWorker(QThread):
                 )
                 out_raw = session_dir / f"segment_{seg.index:04d}.mp3"
                 log_info(
-                    f"Synthesize segment={seg.index} voice={voice} rate={options['rate']} volume={options['volume']} pitch={options['pitch']}"
+                    f"Queue synth segment={seg.index} voice={voice} rate={options['rate']} volume={options['volume']} pitch={options['pitch']}"
                 )
-                try:
-                    synthesize_sync(
-                        seg.text,
-                        voice,
-                        str(out_raw),
-                        rate=options["rate"],
-                        volume=options["volume"],
-                        pitch=options["pitch"],
+                jobs.append(
+                    TtsJob(
+                        seg_index=seg.index,
+                        text=seg.text,
+                        voice=voice,
+                        out_path=str(out_raw),
+                        rate=options.get("rate", "+0%"),
+                        volume=options.get("volume", "+0%"),
+                        pitch=options.get("pitch", "+0Hz"),
                     )
-                    if self.save_original:
-                        shutil.copy2(str(out_raw), str(original_dir / out_raw.name))
-                        log_info(f"Saved original segment file={original_dir / out_raw.name}")
-                    self.segment_done.emit(seg.index, str(out_raw))
-                except Exception as segment_exc:
-                    failed_segments.append(seg.index)
-                    log_error(f"Segment synth failed segment={seg.index}: {segment_exc}")
-                self.progress.emit(int((idx / total) * 80))
+                )
+
+            async def _on_done(
+                job: TtsJob,
+                ok: bool,
+                segment_exc: BaseException | None,
+            ) -> None:
+                nonlocal processed_count
+                try:
+                    if ok:
+                        if self.save_original:
+                            file_name = Path(job.out_path).name
+                            shutil.copy2(job.out_path, str(original_dir / file_name))
+                            log_info(f"Saved original segment file={original_dir / file_name}")
+                        self.segment_done.emit(job.seg_index, job.out_path)
+                    else:
+                        failed_segments.append(job.seg_index)
+                        log_error(f"Segment synth failed segment={job.seg_index}: {segment_exc}")
+                finally:
+                    processed_count += 1
+                    self.progress.emit(int((processed_count / total) * 80))
+
+            if jobs:
+                settings = self.config.load_settings()
+                raw_concurrency = getattr(settings, "tts_concurrency", 2)
+                concurrency = max(1, min(int(raw_concurrency), 8))
+                log_info(f"Start synth batch jobs={len(jobs)} concurrency={concurrency}")
+                asyncio.run(
+                    synthesize_batch(
+                        jobs=jobs,
+                        concurrency=concurrency,
+                        on_done=_on_done,
+                    )
+                )
+            else:
+                log_info("No synth jobs queued")
 
             if failed_segments:
                 failed_sorted = sorted(set(failed_segments))

@@ -213,6 +213,7 @@ class MainWindow(QMainWindow):
         self.speaker_manager.set_max_index(len(self.segments))
         is_txt = file_path.lower().endswith(".txt")
         self.speaker_manager.set_txt_mode(is_txt)
+        self.subtitle_table.set_txt_mode(is_txt)
         if is_txt:
             # TXT mode: không cần tạo người nói/đoạn thủ công.
             self.speaker_manager.apply_txt_voice_settings()
@@ -523,20 +524,63 @@ class MainWindow(QMainWindow):
         dialog.setWindowTitle(tr("help.dialog_title"))
         dialog.resize(760, 560)
         layout = QVBoxLayout(dialog)
+
         text = QTextEdit(dialog)
         text.setReadOnly(True)
-        text.setHtml(
-            tr("help.html_body").format(
-                version=__version__,
-                settings_path=self.config.settings_path,
-                output_dir=self.settings.output_dir,
+
+        last_help_width = -1
+
+        def _render_help_html() -> None:
+            nonlocal last_help_width
+            content_width = text.viewport().width()
+            if content_width <= 0:
+                content_width = dialog.width() - 80
+            if content_width == last_help_width:
+                return
+            last_help_width = content_width
+            text.setHtml(
+                tr("help.html_body").format(
+                    version=__version__,
+                    settings_path=self.config.settings_path,
+                    output_dir=self.settings.output_dir,
+                    quick_guide_image=self._build_guide_image_html(content_width - 24),
+                )
             )
-        )
+
+        _render_help_html()
         layout.addWidget(text)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok)
         buttons.accepted.connect(dialog.accept)
         layout.addWidget(buttons)
+
+        original_resize_event = dialog.resizeEvent
+
+        def _on_resize(event) -> None:
+            original_resize_event(event)
+            _render_help_html()
+
+        dialog.resizeEvent = _on_resize  # type: ignore[assignment]
         dialog.exec()
+
+    def _resolve_guide_image_path(self) -> Path | None:
+        candidates = [
+            self.config.app_root / "src" / "screen.png",
+            self.config.app_root / "screen.png",
+            Path(__file__).resolve().parents[3] / "src" / "screen.png",
+        ]
+        for item in candidates:
+            if item.exists():
+                return item
+        return None
+
+    def _build_guide_image_html(self, max_width: int) -> str:
+        image_path = self._resolve_guide_image_path()
+        if image_path is None:
+            return ""
+        width = max(400, min(max_width, 720))
+        return (
+            f"<p><img src='{image_path.as_uri()}' width='{width}'></p>"
+        )
 
     def _build_section_title(self, text: str) -> QLabel:
         label = QLabel(text)
