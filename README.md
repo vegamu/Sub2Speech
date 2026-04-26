@@ -1,5 +1,6 @@
 ﻿English content is below.
-** Mình sẽ vẫn sửa lỗi và nâng cấp tính năng, sẽ phát hành trong release, nhưng code thì dừng ở bản 1.0**
+
+#** Mình sẽ vẫn sửa lỗi và nâng cấp tính năng, sẽ phát hành trong release, nhưng code thì dừng ở bản 1.0**
 
 # Sub2Speech
 
